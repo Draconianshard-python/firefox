@@ -5,58 +5,149 @@
     <link rel="stylesheet" href="https://pyscript.net/latest/pyscript.css" />
     <script defer src="https://pyscript.net/latest/pyscript.js"></script>
     <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
         #search-container {
-            margin: 20px;
-            padding: 10px;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
         }
         #url-input {
-            width: 60%;
-            padding: 8px;
+            width: 70%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-right: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #2ea44f;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #2c974b;
         }
         #result-container {
-            margin: 20px;
-            padding: 10px;
-            border: 1px solid #ccc;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             min-height: 200px;
         }
+        #history-container {
+            margin-top: 20px;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
         .history-item {
-            margin: 5px;
-            padding: 5px;
+            padding: 10px;
             border-bottom: 1px solid #eee;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
         }
     </style>
 </head>
 <body>
     <div id="search-container">
-        <input type="text" id="url-input" placeholder="Enter URL">
+        <input type="text" id="url-input" placeholder="Enter URL (e.g., https://example.com)">
         <button id="fetch-btn" pys-onClick="fetch_url">Fetch URL</button>
         <button id="history-btn" pys-onClick="show_history">Show History</button>
         <button id="clear-cache-btn" pys-onClick="clear_cache">Clear Cache</button>
     </div>
+    <div id="loading" class="loading">Loading...</div>
     <div id="history-container"></div>
     <div id="result-container"></div>
 
     <py-script>
 import js
 from pyodide.http import pyfetch
-from js import document
-from browser import Browser
+from js import document, console
+from datetime import datetime
 
+class Browser:
+    def __init__(self):
+        self.history = []
+        self.cache = {}
+    
+    async def fetch_url(self, url):
+        # Show loading indicator
+        document.getElementById("loading").style.display = "block"
+        
+        try:
+            if not url.startswith(('http://', 'https://')):
+                url = 'https://' + url
+
+            if url in self.cache:
+                document.getElementById("loading").style.display = "none"
+                return self.cache[url]
+            
+            response = await pyfetch(url)
+            content = await response.text()
+            
+            # Store in history
+            self.history.append({
+                'url': url,
+                'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'status': response.status
+            })
+            
+            # Cache successful responses
+            if response.status == 200:
+                self.cache[url] = content
+            
+            document.getElementById("loading").style.display = "none"
+            return content
+            
+        except Exception as e:
+            document.getElementById("loading").style.display = "none"
+            return f"Error: {str(e)}"
+
+    def get_history(self):
+        return self.history
+    
+    def clear_cache(self):
+        self.cache = {}
+
+# Initialize browser
 browser = Browser()
 
 async def fetch_url(*args):
     url = document.getElementById("url-input").value
+    if not url:
+        document.getElementById("result-container").innerHTML = "Please enter a URL"
+        return
+        
     content = await browser.fetch_url(url)
     document.getElementById("result-container").innerHTML = content
 
 def show_history(*args):
     history = browser.get_history()
+    if not history:
+        document.getElementById("history-container").innerHTML = "<p>No browsing history yet</p>"
+        return
+        
     html = "<h3>Browsing History</h3>"
-    for item in history:
+    for item in reversed(history):  # Show most recent first
         html += f"""
         <div class='history-item'>
-            <div>URL: {item['url']}</div>
-            <div>Status: {item['status']}</div>
+            <div><strong>URL:</strong> {item['url']}</div>
+            <div><strong>Time:</strong> {item['timestamp']}</div>
+            <div><strong>Status:</strong> {item['status']}</div>
         </div>
         """
     document.getElementById("history-container").innerHTML = html
