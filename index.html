@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Python Web Browser</title>
+    <link rel="stylesheet" href="https://pyscript.net/latest/pyscript.css" />
+    <script defer src="https://pyscript.net/latest/pyscript.js"></script>
+</head>
+<body>
+    <div id="search-container">
+        <input type="text" id="url-input" placeholder="Enter URL">
+        <button id="fetch-btn" pys-onClick="fetch_url">Fetch URL</button>
+    </div>
+    <div id="result-container"></div>
+
+    <py-script>
+import js
+from pyodide.http import pyfetch
+from js import document
+
+async def fetch_url(*args):
+    url = document.getElementById("url-input").value
+    try:
+        response = await pyfetch(url)
+        text = await response.text()
+        document.getElementById("result-container").innerHTML = text
+    except Exception as e:
+        document.getElementById("result-container").innerHTML = f"Error: {str(e)}"
+    </py-script>
+</body>
+</html>
