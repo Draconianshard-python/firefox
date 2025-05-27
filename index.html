@@ -4,27 +4,66 @@
     <title>Python Web Browser</title>
     <link rel="stylesheet" href="https://pyscript.net/latest/pyscript.css" />
     <script defer src="https://pyscript.net/latest/pyscript.js"></script>
+    <style>
+        #search-container {
+            margin: 20px;
+            padding: 10px;
+        }
+        #url-input {
+            width: 60%;
+            padding: 8px;
+        }
+        #result-container {
+            margin: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            min-height: 200px;
+        }
+        .history-item {
+            margin: 5px;
+            padding: 5px;
+            border-bottom: 1px solid #eee;
+        }
+    </style>
 </head>
 <body>
     <div id="search-container">
         <input type="text" id="url-input" placeholder="Enter URL">
         <button id="fetch-btn" pys-onClick="fetch_url">Fetch URL</button>
+        <button id="history-btn" pys-onClick="show_history">Show History</button>
+        <button id="clear-cache-btn" pys-onClick="clear_cache">Clear Cache</button>
     </div>
+    <div id="history-container"></div>
     <div id="result-container"></div>
 
     <py-script>
 import js
 from pyodide.http import pyfetch
 from js import document
+from browser import Browser
+
+browser = Browser()
 
 async def fetch_url(*args):
     url = document.getElementById("url-input").value
-    try:
-        response = await pyfetch(url)
-        text = await response.text()
-        document.getElementById("result-container").innerHTML = text
-    except Exception as e:
-        document.getElementById("result-container").innerHTML = f"Error: {str(e)}"
+    content = await browser.fetch_url(url)
+    document.getElementById("result-container").innerHTML = content
+
+def show_history(*args):
+    history = browser.get_history()
+    html = "<h3>Browsing History</h3>"
+    for item in history:
+        html += f"""
+        <div class='history-item'>
+            <div>URL: {item['url']}</div>
+            <div>Status: {item['status']}</div>
+        </div>
+        """
+    document.getElementById("history-container").innerHTML = html
+
+def clear_cache(*args):
+    browser.clear_cache()
+    document.getElementById("result-container").innerHTML = "Cache cleared!"
     </py-script>
 </body>
 </html>
